@@ -1,0 +1,5 @@
+Address:     C6B63DB5-8133-9F77-B6F2-3E42450FA4D2
+Name:        Decathlon Dual HR
+RSSI:        -51 dBm
+Service UUIDs:
+  - 0000180d-0000-1000-8000-00805f9b34fb  [Heart Rate Service]
