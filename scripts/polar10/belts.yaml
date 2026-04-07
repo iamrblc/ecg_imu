@@ -1,0 +1,6 @@
+belt_1: 
+  name: Polar H10 E6B05E24
+  id: E6B05E24
+  address: FFDB0E1C-0262-9016-D154-4562DABCBE43
+  heart_rate_service: 0000180d-0000-1000-8000-00805f9b34fb
+  service_0: 0000feee-0000-1000-8000-00805f9b34fb
