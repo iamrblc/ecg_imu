@@ -44,6 +44,7 @@ ECG_STOP = bytearray([0x03, ECG_MEASUREMENT_TYPE])
 async def main():
 	t0_device_acc = None
 	t0_device_ecg = None
+	ecg_compat_warned = False
 
 	acc_buffer = []
 	ecg_buffer = []
@@ -61,8 +62,10 @@ async def main():
 			print("PMD control:", data.hex(" "))
 
 		def handle_pmd_data(sender, data: bytearray):
-			nonlocal t0_device_acc, t0_device_ecg, acc_buffer, ecg_buffer
+			nonlocal t0_device_acc, t0_device_ecg, acc_buffer, ecg_buffer, ecg_compat_warned
 			t_wall = time.time()
+			if len(data) < 10:
+				return
 
 			measurement_type = data[0]
 
@@ -97,6 +100,7 @@ async def main():
 						f"ACC t={t_sample:.6f}  t_wall={t_wall:.3f}  ts_ns={ts_ns}"
 						f"  x={x:6d}  y={y:6d}  z={z:6d}"
 					)
+				acc_csv_file.flush()
 				return
 
 			if measurement_type == ECG_MEASUREMENT_TYPE:
@@ -107,11 +111,26 @@ async def main():
 					return
 
 				ecg_buffer.clear()
-				offset = 10
-				while offset + 2 <= len(data):
-					ecg = int.from_bytes(data[offset:offset + 2], byteorder="little", signed=True)
-					ecg_buffer.append(ecg)
-					offset += 2
+				payload = data[10:]
+
+				if len(payload) % 3 == 0:
+					offset = 0
+					while offset + 3 <= len(payload):
+						ecg = int.from_bytes(payload[offset:offset + 3], byteorder="little", signed=True)
+						ecg_buffer.append(ecg)
+						offset += 3
+				elif len(payload) % 2 == 0:
+					if not ecg_compat_warned:
+						print("ECG payload is not 24-bit aligned, falling back to 16-bit parsing")
+						ecg_compat_warned = True
+					offset = 0
+					while offset + 2 <= len(payload):
+						ecg = int.from_bytes(payload[offset:offset + 2], byteorder="little", signed=True)
+						ecg_buffer.append(ecg)
+						offset += 2
+				else:
+					print(f"Unsupported ECG payload length: {len(payload)}")
+					return
 
 				T = ts_ns / 1e9
 				N = len(ecg_buffer)
@@ -125,6 +144,7 @@ async def main():
 					t_sample = T - (N - 1 - i) * DT_ECG - t0_device_ecg
 					ecg_writer.writerow([f"{t_sample:.6f}", f"{t_wall:.6f}", ts_ns, ecg])
 					print(f"ECG t={t_sample:.6f}  t_wall={t_wall:.3f}  ts_ns={ts_ns}  ecg={ecg:6d}")
+				ecg_csv_file.flush()
 
 		async with BleakClient(DEVICE_ADDRESS) as client:
 			print("Connected")
@@ -132,32 +152,50 @@ async def main():
 			await client.start_notify(PMD_CONTROL, handle_pmd_control)
 			await client.start_notify(PMD_DATA, handle_pmd_data)
 
-			print("Requesting ACC settings...")
-			await client.write_gatt_char(PMD_CONTROL, ACC_GET_SETTINGS, response=True)
-			await asyncio.sleep(1.0)
+			try:
+				print("Resetting previous ACC/ECG streams (if any)...")
+				try:
+					await client.write_gatt_char(PMD_CONTROL, ACC_STOP, response=True)
+				except Exception:
+					pass
+				try:
+					await client.write_gatt_char(PMD_CONTROL, ECG_STOP, response=True)
+				except Exception:
+					pass
+				await asyncio.sleep(0.3)
 
-			print("Requesting ECG settings...")
-			await client.write_gatt_char(PMD_CONTROL, ECG_GET_SETTINGS, response=True)
-			await asyncio.sleep(1.0)
+				print("Requesting ACC settings...")
+				await client.write_gatt_char(PMD_CONTROL, ACC_GET_SETTINGS, response=True)
+				await asyncio.sleep(1.0)
 
-			print("Starting ACC stream...")
-			await client.write_gatt_char(PMD_CONTROL, ACC_START, response=True)
-			await asyncio.sleep(0.2)
+				print("Requesting ECG settings...")
+				await client.write_gatt_char(PMD_CONTROL, ECG_GET_SETTINGS, response=True)
+				await asyncio.sleep(1.0)
 
-			print("Starting ECG stream...")
-			await client.write_gatt_char(PMD_CONTROL, ECG_START, response=True)
+				print("Starting ACC stream...")
+				await client.write_gatt_char(PMD_CONTROL, ACC_START, response=True)
+				await asyncio.sleep(0.2)
 
-			await asyncio.sleep(STREAM_SECONDS)
+				print("Starting ECG stream...")
+				await client.write_gatt_char(PMD_CONTROL, ECG_START, response=True)
 
-			print("Stopping ACC stream...")
-			await client.write_gatt_char(PMD_CONTROL, ACC_STOP, response=True)
-			await asyncio.sleep(0.2)
+				await asyncio.sleep(STREAM_SECONDS)
+			finally:
+				print("Stopping ACC stream...")
+				try:
+					await client.write_gatt_char(PMD_CONTROL, ACC_STOP, response=True)
+				except Exception:
+					pass
+				await asyncio.sleep(0.2)
 
-			print("Stopping ECG stream...")
-			await client.write_gatt_char(PMD_CONTROL, ECG_STOP, response=True)
+				print("Stopping ECG stream...")
+				try:
+					await client.write_gatt_char(PMD_CONTROL, ECG_STOP, response=True)
+				except Exception:
+					pass
 
-			await client.stop_notify(PMD_DATA)
-			await client.stop_notify(PMD_CONTROL)
+				await client.stop_notify(PMD_DATA)
+				await client.stop_notify(PMD_CONTROL)
 
 	print(f"Saved ACC to {ACC_OUTPUT_FILE}")
 	print(f"Saved ECG to {ECG_OUTPUT_FILE}")
