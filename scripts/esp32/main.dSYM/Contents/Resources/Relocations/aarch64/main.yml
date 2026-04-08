@@ -1,5 +1,0 @@
----
-triple:          'arm64-apple-darwin'
-binary-path:     '/Users/rblc/create/work/elte/ecg_imu/scripts/esp32/main'
-relocations:     []
-...
