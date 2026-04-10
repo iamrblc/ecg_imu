@@ -1,6 +1,8 @@
 experiment_id: test
 
 duration: 30
+accelerometer_frequency = 200
+ecg_frequency = 130
 
 belt_1: 
   name: Polar H10 E6B05E24
