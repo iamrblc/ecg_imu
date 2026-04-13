@@ -61,7 +61,7 @@ DEVICE_ADDRESS = "FFDB0E1C-0262-9016-D154-4562DABCBE43" # Access on Mac
 PMD_CONTROL = "fb005c81-02e7-f387-1cad-8acd2d8df0c8"
 PMD_DATA = "fb005c82-02e7-f387-1cad-8acd2d8df0c8"
 
-STREAM_SECONDS = 30				# How long should be the measurement.
+STREAM_SECONDS = 120				# How long should be the measurement.
 
 FS_ACC = 200					# ACC frequency can be 50/100/150/200 Hz. 
 DT_ACC = 1 / FS_ACC				# Delta time (s) between two consecutive ACC samples.
