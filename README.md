@@ -27,6 +27,7 @@ The main workflow uses a custom built portable ECG device (AD8232) module. But i
         - [x] time (elapsed time in ms from the beginning of the recording (@200Hz))
         - [x] ecg_raw (raw ECG signal)
         - [x] ecg_proc (processed ECG signal - removed 50 Hz hum, artifacts, etc)
+        - [ ] added error handling for signal loss, power outage, armageddon
     - [ ] other processed data is recorded in an appropriate format
         - [ ] HR (heart rate) based on physiozoo
         - [ ] EDR (ECG-derived respiration)
