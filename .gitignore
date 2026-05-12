@@ -10,3 +10,7 @@ wheels/
 .venv
 .mypy_cache
 .vscode
+
+# Data
+data
+
