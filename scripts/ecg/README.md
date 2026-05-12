@@ -11,7 +11,7 @@ The main workflow uses a custom built portable ECG device (AD8232) module. But i
 - [ ] A cross-platform user interface is available to set up
     - [ ] recording metadata (eg. file name, subject name, test condition)
     - [ ] optional quasi-live streaming of data for monitoring purposes (the device can run without this)
-- [ ] On board button triggers the start and end of ECG data recording (ON / OFF)
+- [x] On board button triggers the start and end of ECG data recording (ON / OFF)
 - [ ] Board clock syncs with lab wifi before the experiment starts (UNIX time)
 - [x] ECG module (AD8232) collects ECG data 
 - [x] Data is written to an SD card 
