@@ -2,8 +2,10 @@
 
 #include <inttypes.h>
 #include <SPI.h>
+#include <ArduinoJson.h>
 
 #include "config.h"
+#include "web_state.h"
 
 namespace {
 
@@ -90,5 +92,44 @@ bool CsvRecorder::flushBufferedRows() {
 
     dataFile.flush();
     bufferedRows = 0;
+    return true;
+}
+
+bool CsvRecorder::writeMetadataJson(const char* csvFilePath, uint32_t sampleCount, uint64_t startTimestamp, uint64_t endTimestamp) {
+    // Convert CSV filename to JSON filename
+    String jsonPath = String(csvFilePath);
+    jsonPath.replace(".csv", ".json");
+
+    // Open JSON file for writing
+    File jsonFile = SD.open(jsonPath.c_str(), FILE_WRITE);
+    if (!jsonFile) {
+        Serial.print("Failed to open JSON file: ");
+        Serial.println(jsonPath);
+        return false;
+    }
+
+    // Get metadata from WebState
+    RecordingMetadata md = WebState::getMetadata();
+
+    // Build JSON document
+    DynamicJsonDocument doc(512);
+    doc["filename_user_input"] = md.userInputFilename;
+    doc["filename_full"] = String(csvFilePath).substring(String(csvFilePath).lastIndexOf('/') + 1);
+    doc["timestamp_start_unix"] = startTimestamp;
+    doc["timestamp_end_unix"] = endTimestamp;
+    doc["duration_seconds"] = (endTimestamp - startTimestamp) / 1000;
+    doc["sample_rate_hz"] = 200;  // From config
+    doc["samples_count"] = sampleCount;
+
+    JsonObject metadata = doc.createNestedObject("metadata");
+    metadata["dog_id"] = md.dogId;
+    metadata["experiment_id"] = md.experimentId;
+
+    // Write JSON to file
+    serializeJson(doc, jsonFile);
+    jsonFile.close();
+
+    Serial.print("Metadata JSON written: ");
+    Serial.println(jsonPath);
     return true;
 }

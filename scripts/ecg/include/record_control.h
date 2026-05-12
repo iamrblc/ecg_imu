@@ -12,7 +12,7 @@ public:
     Event pollEvent(unsigned long nowMs);
 
     void setRecording(bool isRecording);
-    bool isRecording() const;
+    bool isRecording();  // Non-const to allow state sync with WebState
     bool isLatchPressed() const;
 
     void blinkStopPattern();

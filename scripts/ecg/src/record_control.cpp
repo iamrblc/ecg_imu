@@ -1,6 +1,7 @@
 #include "record_control.h"
 #include <Arduino.h>
 #include "config.h"
+#include "web_state.h"
 
 namespace {
 constexpr unsigned long kDebounceMs = 30;
@@ -49,6 +50,7 @@ RecordControl::Event RecordControl::pollEvent(unsigned long nowMs) {
 
 void RecordControl::setRecording(bool isRecording) {
     recording = isRecording;
+    WebState::setRecording(isRecording);  // Sync with web state
     if (recording) {
         setRecordingIndicator(true);
         return;
@@ -57,7 +59,13 @@ void RecordControl::setRecording(bool isRecording) {
     setStandbyIndicator();
 }
 
-bool RecordControl::isRecording() const {
+bool RecordControl::isRecording() {
+    // Check both local state and global WebState
+    // If they differ, use the global state (web interface has priority)
+    bool globalState = WebState::isRecording();
+    if (globalState != recording) {
+        recording = globalState;  // Sync local state
+    }
     return recording;
 }
 

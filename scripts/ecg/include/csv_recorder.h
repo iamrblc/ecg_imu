@@ -16,6 +16,9 @@ public:
     bool writeSample(const EcgSample& sample);
     void close();
     bool isOpen() const;
+    
+    // Write metadata JSON file with same name as CSV
+    bool writeMetadataJson(const char* csvFilePath, uint32_t sampleCount, uint64_t startTimestamp, uint64_t endTimestamp);
 
 private:
     bool flushBufferedRows();
