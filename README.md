@@ -22,6 +22,7 @@ The main workflow uses a custom built portable ECG device (AD8232) module. But i
     - [x] Recording starts: indicated by continuous blue LED
     - [x] Recording stops: indicated by 3 blinks of the blue LED
 - [x] SD card is inicialized 
+    - [ ] CSV file name is generated from user input (or UNIX time if input is missing)
     - [x] CSV file is created with the following columns:
         - [x] timestamp (UNIX time)
         - [x] time (elapsed time in ms from the beginning of the recording (@200Hz))
