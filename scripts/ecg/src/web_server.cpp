@@ -222,9 +222,23 @@ void WebServer::sendFilesList(AsyncWebServerRequest* request) {
     DynamicJsonDocument doc(1024);
     JsonArray files = doc.createNestedArray("files");
 
+    // Ensure SD is initialized for directory listing even before first recording.
+    if (!SD.begin(Pins::kSdCsPin)) {
+        String jsonStr;
+        serializeJson(doc, jsonStr);
+        request->send(200, "application/json", jsonStr);
+        return;
+    }
+
+    if (!SD.exists(WebServerConfig::kRecordingsPath)) {
+        SD.mkdir(WebServerConfig::kRecordingsPath);
+    }
+
     File root = SD.open(WebServerConfig::kRecordingsPath);
     if (!root || !root.isDirectory()) {
-        request->send(200, "application/json", "[]");
+        String jsonStr;
+        serializeJson(doc, jsonStr);
+        request->send(200, "application/json", jsonStr);
         return;
     }
 

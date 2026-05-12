@@ -17,6 +17,8 @@ CsvRecorder csvRecorder;
 RecordControl recordControl;
 unsigned long startTime;
 unsigned long nextSampleDueMs;
+unsigned long nextAlwaysSampleMs = 0;  // For continuous sampling even when not recording
+unsigned long systemBootTimeMs = 0;    // When the system started
 bool gHasUnixTime = false;
 uint32_t gSampleCount = 0;
 uint64_t gRecordingStartTimestamp = 0;
@@ -208,6 +210,10 @@ void setup() {
 
     Serial.begin(115200);
     
+    // Initialize timing for always-on sampling
+    systemBootTimeMs = millis();
+    nextAlwaysSampleMs = systemBootTimeMs;
+    
     // Initialize WebState
     WebState::begin();
     
@@ -222,6 +228,20 @@ void setup() {
 
     ecgSampler.begin();
     recordControl.begin();
+
+    // Initialize SD and create /recordings directory for file listing
+    Serial.println("Initializing SD card for recordings directory...");
+    if (SD.begin(Pins::kSdCsPin)) {
+        if (!SD.exists(WebServerConfig::kRecordingsPath)) {
+            if (SD.mkdir(WebServerConfig::kRecordingsPath)) {
+                Serial.println("/recordings directory created");
+            }
+        } else {
+            Serial.println("/recordings directory already exists");
+        }
+    } else {
+        Serial.println("Warning: SD card not available yet");
+    }
 
     Serial.println("System ready. Push latch in to start recording.");
 
@@ -259,47 +279,57 @@ void loop() {
         stopRecording();
     }
 
-    if (!WebState::isRecording()) {
-        // Broadcast last sample even when not recording (for status display)
-        gWebServer.broadcastLastSample();
-        delay(5);
-        return;
-    }
+    // Determine which timing to use: recording vs always-on sampling
+    bool isRecording = WebState::isRecording();
+    unsigned long& nextDueMs = isRecording ? nextSampleDueMs : nextAlwaysSampleMs;
 
-    if (nowMs < nextSampleDueMs) {
+    // Check if it's time for a new sample
+    if (nowMs < nextDueMs) {
+        // Not yet time for a sample, small delay
         delay(1);
+        gWebServer.broadcastLastSample();  // Still broadcast last sample
         return;
     }
 
-    const unsigned long elapsedTime = nextSampleDueMs - startTime;
+    // Calculate elapsed time appropriately based on state
+    unsigned long elapsedTime;
+    if (isRecording) {
+        // During recording, elapsed time is relative to recording start
+        elapsedTime = nextDueMs - startTime;
+    } else {
+        // When not recording, elapsed time is relative to system boot
+        elapsedTime = nowMs - systemBootTimeMs;
+    }
+
+    // Read ECG sample
     EcgSample sample = ecgSampler.readSample(elapsedTime, getUnixTimeMs());
-    nextSampleDueMs += RecordingConfig::kSampleIntervalMs;
-
-    if (nowMs > nextSampleDueMs) {
-        nextSampleDueMs = nowMs + RecordingConfig::kSampleIntervalMs;
+    
+    // Update timing for next sample
+    nextDueMs += RecordingConfig::kSampleIntervalMs;
+    if (nowMs > nextDueMs) {
+        nextDueMs = nowMs + RecordingConfig::kSampleIntervalMs;
     }
 
-    if (!csvRecorder.writeSample(sample)) {
-        Serial.println("Failed to write ECG sample!");
-        stopRecording();
-        delay(100);
-        return;
+    // Write to CSV only if recording
+    if (isRecording) {
+        if (!csvRecorder.writeSample(sample)) {
+            Serial.println("Failed to write ECG sample!");
+            stopRecording();
+            delay(100);
+            return;
+        }
+        gSampleCount++;
+
+        // Print to serial for monitoring (optional, reduce verbosity)
+        if (gSampleCount % 100 == 0) {
+            Serial.print("Samples collected: ");
+            Serial.print(gSampleCount);
+            Serial.print(" | ECG: ");
+            Serial.println(sample.ecgRaw);
+        }
     }
 
-    // Update sample counters
-    gSampleCount++;
-
-    // Update WebState with last sample for web interface display
+    // Always update WebState with last sample and broadcast (whether recording or not)
     WebState::setLastSample(sample);
-
-    // Broadcast sample to WebSocket clients
     gWebServer.broadcastLastSample();
-
-    // Print to serial for monitoring (optional, reduce verbosity)
-    if (gSampleCount % 100 == 0) {
-        Serial.print("Samples collected: ");
-        Serial.print(gSampleCount);
-        Serial.print(" | ECG: ");
-        Serial.println(sample.ecgRaw);
-    }
 }
