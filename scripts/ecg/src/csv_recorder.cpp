@@ -4,9 +4,13 @@
 
 #include "config.h"
 
-bool CsvRecorder::begin(const char* filePath) {
+bool CsvRecorder::begin(const char* filePath, bool overwrite) {
     if (!SD.begin(Pins::kSdCsPin)) {
         return false;
+    }
+
+    if (overwrite && SD.exists(filePath)) {
+        SD.remove(filePath);
     }
 
     dataFile = SD.open(filePath, FILE_WRITE);

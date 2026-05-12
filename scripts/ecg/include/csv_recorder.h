@@ -10,7 +10,7 @@
 
 class CsvRecorder {
 public:
-    bool begin(const char* filePath);
+    bool begin(const char* filePath, bool overwrite = false);
     bool writeHeader();
     bool writeSample(const EcgSample& sample);
     void close();

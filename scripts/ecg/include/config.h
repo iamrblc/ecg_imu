@@ -9,7 +9,11 @@ namespace Pins {
 constexpr int kEcgPin = A0;         //k prefix is just convention
 constexpr int kLoPlusPin = D2;
 constexpr int kLoMinusPin = D3;
+constexpr int kRecordButtonPin = D4;
 constexpr int kSdCsPin = D10;
+constexpr int kLedRedPin = 14;
+constexpr int kLedGreenPin = 15;
+constexpr int kLedBluePin = 16;
 }
 
 namespace RecordingConfig {

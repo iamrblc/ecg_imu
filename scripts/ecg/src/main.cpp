@@ -4,10 +4,52 @@
 #include "csv_recorder.h"
 #include "ecg_sampler.h"
 #include "config.h"
+#include "record_control.h"
 
 EcgSampler ecgSampler;
 CsvRecorder csvRecorder;
+RecordControl recordControl;
 unsigned long startTime;
+
+namespace {
+
+bool startRecording() {
+    Serial.println("Initializing SD card...");
+
+    if (!csvRecorder.begin(RecordingConfig::kDefaultFilePath, true)) {
+        Serial.println("SD initialization failed!");
+        return false;
+    }
+
+    Serial.println("SD initialization successful!");
+
+    if (!csvRecorder.writeHeader()) {
+        Serial.println("Failed to open file!");
+        csvRecorder.close();
+        return false;
+    }
+
+    startTime = millis();
+    recordControl.setRecording(true);
+    Serial.println("Recording started.");
+    return true;
+}
+
+void stopRecording() {
+    if (!recordControl.isRecording()) {
+        return;
+    }
+
+    const unsigned long elapsedTime = millis() - startTime;
+    csvRecorder.close();
+    recordControl.setRecording(false);
+
+    Serial.println("Recording stopped.");
+    Serial.print("Total samples collected: ");
+    Serial.println(elapsedTime / RecordingConfig::kSampleIntervalMs);
+    recordControl.blinkStopPattern();
+}
+}
 
 void setup() {
     delay(3000);  // Give serial monitor time to connect
@@ -15,48 +57,44 @@ void setup() {
     Serial.begin(115200);
 
     ecgSampler.begin();
-    
-    Serial.println("Initializing SD card...");
+    recordControl.begin();
 
-    if (!csvRecorder.begin(RecordingConfig::kDefaultFilePath)) {
-        Serial.println("SD initialization failed!");
-        while (true);
-    }
-    
-    Serial.println("SD initialization successful!");
+    Serial.println("System ready. Push latch in to start recording.");
 
-    if (!csvRecorder.writeHeader()) {
-        Serial.println("Failed to open file!");
-        while (true);
+    if (recordControl.isLatchPressed()) {
+        startRecording();
     }
-    
-    Serial.println("CSV header written. Starting ECG data collection...");
-    Serial.println("Collecting data for 60 seconds at 200 Hz...");
-    
-    startTime = millis();
 }
 
 void loop() {
-    unsigned long currentTime = millis();
-    unsigned long elapsedTime = currentTime - startTime;
-    
-    // Check if collection time is complete
-    if (elapsedTime >= RecordingConfig::kCollectionTimeMs) {
-        csvRecorder.close();
-        Serial.println("\nData collection complete!");
-        Serial.print("Total samples collected: ");
-        Serial.println(elapsedTime / RecordingConfig::kSampleIntervalMs);
-        while (true);  // Stop here
+    const unsigned long nowMs = millis();
+
+    switch (recordControl.pollEvent(nowMs)) {
+        case RecordControl::Event::StartRequested:
+            startRecording();
+            break;
+        case RecordControl::Event::StopRequested:
+            stopRecording();
+            break;
+        case RecordControl::Event::None:
+            break;
     }
-    
+
+    if (!recordControl.isRecording()) {
+        delay(5);
+        return;
+    }
+
+    const unsigned long elapsedTime = nowMs - startTime;
     EcgSample sample = ecgSampler.readSample(elapsedTime);
 
     if (!csvRecorder.writeSample(sample)) {
         Serial.println("Failed to write ECG sample!");
-        csvRecorder.close();
-        while (true);
+        stopRecording();
+        delay(100);
+        return;
     }
-    
+
     // Print to serial for monitoring
     Serial.print("t=");
     Serial.print(sample.timestampMs);
@@ -66,7 +104,7 @@ void loop() {
     Serial.print(sample.loPlus);
     Serial.print(" lo-=");
     Serial.println(sample.loMinus);
-    
+
     // Wait for next sample (5 ms for 200 Hz)
     delay(RecordingConfig::kSampleIntervalMs);
 }
