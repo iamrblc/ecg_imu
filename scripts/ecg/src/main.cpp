@@ -1,57 +1,34 @@
 #include <Arduino.h>
-#include <SPI.h>
-#include <SD.h>
 
-// ECG Module Pins
-const int ECG_PIN = A0;
-const int LO_PLUS = D2;
-const int LO_MINUS = D3;
+//Individual logic scripts
+#include "csv_recorder.h"
+#include "ecg_sampler.h"
+#include "config.h"
 
-// SD Card Module Pin
-const int SD_CS = D10;
-
-// Data collection parameters
-const int SAMPLE_RATE = 200;  // Hz
-const unsigned long SAMPLE_INTERVAL = 1000 / SAMPLE_RATE;  // milliseconds (5 ms)
-const unsigned long COLLECTION_TIME = 60000;  // 1 minute in milliseconds
-
-File dataFile;
+EcgSampler ecgSampler;
+CsvRecorder csvRecorder;
 unsigned long startTime;
 
 void setup() {
     delay(3000);  // Give serial monitor time to connect
 
     Serial.begin(115200);
-    
-    // Initialize ECG pins
-    pinMode(LO_PLUS, INPUT);
-    pinMode(LO_MINUS, INPUT);
-    
-    // Configure ADC
-    analogReadResolution(12);
-    analogSetAttenuation(ADC_11db);
+
+    ecgSampler.begin();
     
     Serial.println("Initializing SD card...");
-    
-    // Initialize SD card
-    if (!SD.begin(SD_CS)) {
+
+    if (!csvRecorder.begin(RecordingConfig::kDefaultFilePath)) {
         Serial.println("SD initialization failed!");
         while (true);
     }
     
     Serial.println("SD initialization successful!");
-    
-    // Open/create CSV file
-    dataFile = SD.open("/ecg_data.csv", FILE_WRITE);
-    
-    if (!dataFile) {
+
+    if (!csvRecorder.writeHeader()) {
         Serial.println("Failed to open file!");
         while (true);
     }
-    
-    // Write CSV header
-    dataFile.println("timestamp_ms,ecg_value,lo_plus,lo_minus");
-    dataFile.flush();
     
     Serial.println("CSV header written. Starting ECG data collection...");
     Serial.println("Collecting data for 60 seconds at 200 Hz...");
@@ -64,39 +41,32 @@ void loop() {
     unsigned long elapsedTime = currentTime - startTime;
     
     // Check if collection time is complete
-    if (elapsedTime >= COLLECTION_TIME) {
-        dataFile.close();
+    if (elapsedTime >= RecordingConfig::kCollectionTimeMs) {
+        csvRecorder.close();
         Serial.println("\nData collection complete!");
         Serial.print("Total samples collected: ");
-        Serial.println(elapsedTime / SAMPLE_INTERVAL);
+        Serial.println(elapsedTime / RecordingConfig::kSampleIntervalMs);
         while (true);  // Stop here
     }
     
-    // Read sensor values
-    int loPlus = digitalRead(LO_PLUS);
-    int loMinus = digitalRead(LO_MINUS);
-    int ecgValue = analogRead(ECG_PIN);
-    
-    // Write data to SD card
-    dataFile.print(elapsedTime);
-    dataFile.print(",");
-    dataFile.print(ecgValue);
-    dataFile.print(",");
-    dataFile.print(loPlus);
-    dataFile.print(",");
-    dataFile.println(loMinus);
-    dataFile.flush();
+    EcgSample sample = ecgSampler.readSample(elapsedTime);
+
+    if (!csvRecorder.writeSample(sample)) {
+        Serial.println("Failed to write ECG sample!");
+        csvRecorder.close();
+        while (true);
+    }
     
     // Print to serial for monitoring
     Serial.print("t=");
-    Serial.print(elapsedTime);
+    Serial.print(sample.timestampMs);
     Serial.print("ms ecg=");
-    Serial.print(ecgValue);
+    Serial.print(sample.ecgValue);
     Serial.print(" lo+=");
-    Serial.print(loPlus);
+    Serial.print(sample.loPlus);
     Serial.print(" lo-=");
-    Serial.println(loMinus);
+    Serial.println(sample.loMinus);
     
     // Wait for next sample (5 ms for 200 Hz)
-    delay(SAMPLE_INTERVAL);
+    delay(RecordingConfig::kSampleIntervalMs);
 }
