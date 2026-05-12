@@ -49,7 +49,12 @@ RecordControl::Event RecordControl::pollEvent(unsigned long nowMs) {
 
 void RecordControl::setRecording(bool isRecording) {
     recording = isRecording;
-    setRecordingIndicator(recording);
+    if (recording) {
+        setRecordingIndicator(true);
+        return;
+    }
+
+    setStandbyIndicator();
 }
 
 bool RecordControl::isRecording() const {
@@ -62,11 +67,18 @@ bool RecordControl::isLatchPressed() const {
 
 void RecordControl::blinkStopPattern() {
     for (int i = 0; i < 3; ++i) {
-        setRecordingIndicator(true);
+        setColor(false, false, true);
         delay(kBlinkOnMs);
-        setRecordingIndicator(false);
+        setColor(false, false, false);
         delay(kBlinkOffMs);
     }
+
+    if (recording) {
+        setRecordingIndicator(true);
+        return;
+    }
+
+    setStandbyIndicator();
 }
 
 void RecordControl::setColor(bool redOn, bool greenOn, bool blueOn) {
@@ -74,6 +86,10 @@ void RecordControl::setColor(bool redOn, bool greenOn, bool blueOn) {
     digitalWrite(Pins::kLedRedPin, redOn ? LOW : HIGH);
     digitalWrite(Pins::kLedGreenPin, greenOn ? LOW : HIGH);
     digitalWrite(Pins::kLedBluePin, blueOn ? LOW : HIGH);
+}
+
+void RecordControl::setStandbyIndicator() {
+    setColor(false, true, false);
 }
 
 void RecordControl::setRecordingIndicator(bool on) {

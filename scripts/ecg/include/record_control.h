@@ -19,6 +19,7 @@ public:
 
 private:
     void setColor(bool redOn, bool greenOn, bool blueOn);
+    void setStandbyIndicator();
     void setRecordingIndicator(bool on);
 
     bool lastRawPressed = false;
