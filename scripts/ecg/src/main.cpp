@@ -177,7 +177,7 @@ bool startRecording() {
 }
 
 void stopRecording() {
-    if (!recordControl.isRecording()) {
+    if (!csvRecorder.isOpen()) {
         return;
     }
 
