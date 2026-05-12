@@ -1,6 +1,6 @@
 #include "web_server.h"
 #include <ESPAsyncWebServer.h>
-#include <SPIFFS.h>
+#include <FFat.h>
 #include <ArduinoJson.h>
 #include <FS.h>
 #include <SD.h>
@@ -13,9 +13,9 @@ WebServer::WebServer() : server(nullptr), ws(nullptr), lastBroadcastMs(0) {
 }
 
 void WebServer::begin() {
-    // Initialize SPIFFS for static files
-    if (!SPIFFS.begin(true)) {
-        Serial.println("Failed to mount SPIFFS");
+    // Initialize FFat for static files
+    if (!FFat.begin(true)) {
+        Serial.println("Failed to mount FFat");
         return;
     }
 
@@ -58,8 +58,8 @@ void WebServer::begin() {
         this->handleDownload(request);
     });
 
-    // Serve static files from SPIFFS
-    server->serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
+    // Serve static files from FFat
+    server->serveStatic("/", FFat, "/").setDefaultFile("index.html");
 
     // Handle 404
     server->onNotFound([](AsyncWebServerRequest* request) {
@@ -84,8 +84,8 @@ bool WebServer::isRunning() {
 }
 
 void WebServer::handleRoot(AsyncWebServerRequest* request) {
-    // Serve index.html from SPIFFS
-    request->send(SPIFFS, "/index.html", "text/html");
+    // Serve index.html from FFat
+    request->send(FFat, "/index.html", "text/html");
 }
 
 void WebServer::handleStatus(AsyncWebServerRequest* request) {
