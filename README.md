@@ -41,6 +41,55 @@ The main workflow uses a custom built portable ECG device (AD8232) module. But i
 > Note: AFAIK the digital pins are not arbitrary, although they can be modified later.
 > Note2: OMG, I don't believe that MOSI and MISO were not cancelled yet.
 
+#### SD card module
+|SD     |ESP32  |Comment                                    | 
+|-------|-------|-------------------------------------------|
+|3v3    |3v3    |kraft                                      |
+|CS     |D10    |Chip Select / fro SPI                      |
+|MOSI   |D11    |ESP32 > SD card data                       |
+
+#### Push Button Latch
+|button |ESP32  |Comment                                    | 
+|-------|-------|-------------------------------------------|
+|NO     |D4     |Normally Open                              |
+|COM    |GND    |Middle pin                                 |
+|NC     |       |Normally Closed (unconnected               |
+
+#### ESP32 board pins (note for self)
+|PIN    |Stands for     |Comment                    | 
+|-------|---------------|---------------------------|
+|TX1    |transmit       |UART transmission          | 
+|RX0    |receive        |UART reception             | 
+|RST    |reset          |                           | 
+|GND    |ground         |                           | 
+|D2     |digital        |general (LO-)              |   
+|D3     |digital        |general (LO+)              |
+|D4     |digital        |general (push button latch)|
+|D5     |digital        |general                    |
+|D6     |digital        |general                    |
+|D7     |digital        |general                    |
+|D8     |digital        |general                    |
+|D9     |digital        |general                    |
+|D10    |digital        |reserved for CHIP SELECT   |
+|D11    |digital        |reserved for MOSI          |
+|D12    |digital        |reserved for MISO          |
+|D13    |digital        |reserved for CLOCK         |
+|3V3    |kraft          |3.3V                       |
+|B0     |boot           |                           |
+|A0     |analog         |                           |
+|A1     |analog         |                           |
+|A2     |analog         |                           |                           
+|A4     |analog         |                           |
+|A5     |analog         |                           |
+|A6     |analog         |                           |
+|A7     |analog         |                           |
+|VBUS   |USB power      |5V                         |
+|B1     |boot           |                           |
+|GND    |ground         |                           |
+|VIN    |voltage input  |                           |
+
+
+
 
 
 
