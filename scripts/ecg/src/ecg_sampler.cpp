@@ -12,11 +12,18 @@ void EcgSampler::begin() {
     analogSetAttenuation(ADC_11db);
 }
 
-EcgSample EcgSampler::readSample(unsigned long timestampMs) const {
+EcgSample EcgSampler::readSample(unsigned long elapsedTimeMs, uint64_t timestampUnixMs) const {
     EcgSample sample{};
-    sample.timestampMs = timestampMs;
-    sample.loPlus = digitalRead(Pins::kLoPlusPin);
-    sample.loMinus = digitalRead(Pins::kLoMinusPin);
-    sample.ecgValue = analogRead(Pins::kEcgPin);
+    sample.timestampUnixMs = timestampUnixMs;
+    sample.elapsedTimeMs = elapsedTimeMs;
+    sample.loPos = digitalRead(Pins::kLoPlusPin);
+    sample.loNeg = digitalRead(Pins::kLoMinusPin);
+    sample.ecgRaw = analogRead(Pins::kEcgPin);
+    sample.ecgProcessed = processSample(sample.ecgRaw);
     return sample;
+}
+
+int EcgSampler::processSample(int rawValue) const {
+    // Placeholder processing step: currently pass-through.
+    return rawValue;
 }

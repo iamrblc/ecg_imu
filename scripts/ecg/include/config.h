@@ -20,4 +20,14 @@ namespace RecordingConfig {
 constexpr int kSampleIntervalMs = 5; //200 Hz => 1000 ms / 200
 constexpr unsigned long kCollectionTimeMs = 60000;
 constexpr const char* kDefaultFilePath = "/ecg_data.csv";
+constexpr unsigned int kWriteBatchRows = 50;
+}
+
+namespace WifiConfig {
+constexpr const char* kSsid = "OnePlus8";
+constexpr const char* kPassword = "m4mp79k5";
+constexpr unsigned long kConnectTimeoutMs = 30000;
+constexpr const char* kNtpServerPrimary = "pool.ntp.org";
+constexpr const char* kNtpServerSecondary = "time.nist.gov";
+constexpr unsigned long kNtpSyncTimeoutMs = 10000;
 }

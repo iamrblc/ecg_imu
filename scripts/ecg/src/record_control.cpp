@@ -1,7 +1,5 @@
 #include "record_control.h"
-
 #include <Arduino.h>
-
 #include "config.h"
 
 namespace {

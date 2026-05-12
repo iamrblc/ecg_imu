@@ -6,6 +6,7 @@
 #include <SD.h>
 
 //Own scripts
+#include "config.h"
 #include "ecg_sampler.h"
 
 class CsvRecorder {
@@ -17,5 +18,9 @@ public:
     bool isOpen() const;
 
 private:
+    bool flushBufferedRows();
+
     File dataFile;
+    EcgSample rowBuffer[RecordingConfig::kWriteBatchRows]{};
+    unsigned int bufferedRows = 0;
 };

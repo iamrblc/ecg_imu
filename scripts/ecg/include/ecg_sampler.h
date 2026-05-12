@@ -1,15 +1,22 @@
 //Prevent double loading
 #pragma once
 
+#include <stdint.h>
+
 struct EcgSample {
-    unsigned long timestampMs;
-    int ecgValue;
-    int loPlus;
-    int loMinus;
+    uint64_t timestampUnixMs;
+    unsigned long elapsedTimeMs;
+    int ecgRaw;
+    int ecgProcessed;
+    int loPos;
+    int loNeg;
 };
 
 class EcgSampler {
 public:
     void begin();
-    EcgSample readSample(unsigned long timestampMs) const;
+    EcgSample readSample(unsigned long elapsedTimeMs, uint64_t timestampUnixMs) const;
+
+private:
+    int processSample(int rawValue) const;
 };
