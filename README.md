@@ -11,11 +11,27 @@ The main workflow uses a custom built portable ECG device (AD8232) module. But i
 - [ ] A cross-platform user interface is available to set up
     - [ ] recording metadata (eg. file name, subject name, test condition)
     - [ ] optional quasi-live streaming of data for monitoring purposes (the device can run without this)
-- [ ] On board button triggers the start and end of ECG data recording (ON / OFF)
-- [ ] Board clock syncs with lab wifi before the experiment starts (UNIX time)
+    - [ ] system monitoring is on display (is time synced through wifi, recording started, etc)
+- [x] After boot it checks if wifi is available.
+    - [x] If so, it does NTP (Network Time Protocol) syncing (UNIX time)
+    - [x] If not, it just measures elapsed time.
+    - [ ] RTC (Real-Time Clock) module is added so sync accuracy stays for long time even without wifi
 - [x] ECG module (AD8232) collects ECG data 
-- [x] Data is written to an SD card 
+- [x] Standby indicator shows when recording can start (green LED)
+- [x] On board button triggers the start and end of ECG data recording
+    - [x] Recording starts: indicated by continuous blue LED
+    - [x] Recording stops: indicated by 3 blinks of the blue LED
+- [x] SD card is inicialized 
+    - [x] CSV file is created with the following columns:
+        - [x] timestamp (UNIX time)
+        - [x] time (elapsed time in ms from the beginning of the recording (@200Hz))
+        - [x] ecg_raw (raw ECG signal)
+        - [x] ecg_proc (processed ECG signal - removed 50 Hz hum, artifacts, etc)
+    - [ ] other processed data is recorded in an appropriate format
+        - [ ] HR (heart rate) based on physiozoo
+        - [ ] EDR (ECG-derived respiration)
 - [ ] Board is powered by a chargable Li-ion battery pack
+- [ ] everything is soldered together into a neat little case on a PCB
 
 ### Wiring
 #### ECG module
