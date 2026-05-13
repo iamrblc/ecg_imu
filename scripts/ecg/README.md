@@ -91,104 +91,70 @@ The main workflow uses a custom built portable ECG device (AD8232) module. But i
 
 ```mermaid
 flowchart TD
-    %% AD8232/ESP32 ECG pipeline only (scripts/ecg)
-
-    A[Power On / Boot] --> B[setup in main.cpp]
+    A[Power On or Boot] --> B[setup in main.cpp]
     B --> C[WebState begin]
-    C --> D[Try load wifi.json from SD]
-    D --> E{WiFi connected?}
-    E -- yes --> F[Save/update wifi.json with IP]
-    F --> G[Try NTP sync -> set timeSynced]
-    G --> H[Start web server + mDNS]
-    E -- no --> I[Run offline mode\nno NTP no web server]
+    C --> D[Load wifi.json from SD if present]
+    D --> E{WiFi connected}
+    E -- yes --> F[Update wifi.json with current IP]
+    F --> G[Try NTP sync and set timeSynced]
+    G --> H[Start web server and mDNS]
+    E -- no --> I[Offline mode no NTP]
 
     H --> J[Init ECG sampler]
     I --> J
-    J --> K[Init RecordControl\nbutton + LEDs]
-    K --> L[Ensure /recordings exists on SD]
-    L --> M{Latch already pressed?}
+    J --> K[Init RecordControl button and LEDs]
+    K --> L[Ensure recordings folder exists]
+    L --> M{Latch already pressed}
     M -- yes --> N[startRecording]
     M -- no --> O[Enter main loop]
     N --> O
 
-    subgraph Triggers[Recording trigger paths]
-      T1[Button debounced\nStartRequested/StopRequested]
-      T2[Web API POST\nrecording start/stop]
-      T3[WebState.recording flag\nreconciled each loop]
-    end
+    O --> P[Check trigger sources]
+    P --> P1[Button start or stop events]
+    P --> P2[Web API start or stop requests]
+    P --> P3[WebState recording reconciliation]
+    P1 --> Q{Start or Stop}
+    P2 --> Q
+    P3 --> Q
 
-    O --> T1
-    O --> T2
-    O --> T3
+    Q -- Start --> R[startRecording sequence]
+    R --> R1[Init SD and create CSV path]
+    R1 --> R2[Generate filename from metadata and timestamp]
+    R2 --> R3[Open CSV and write header]
+    R3 --> R4[Reset recording filter and counters]
+    R4 --> R5[Set recording true and LED blue]
+    R5 --> S[Sampling loop]
 
-    T1 --> U{Start or Stop?}
-    T2 --> U
-    T3 --> U
+    Q -- Stop --> T[stopRecording sequence]
+    T --> T1[Write metadata JSON beside CSV]
+    T1 --> T2[Flush and close CSV]
+    T2 --> T3[Set recording false and blink stop pattern]
+    T3 --> O
 
-    U -- Start --> V[startRecording]
-    V --> V1[Init SD if needed]
-    V1 --> V2[Generate filename from metadata + timestamp]
-    V2 --> V3[Open CSV in /recordings]
-    V3 --> V4[Write CSV header]
-    V4 --> V5[Reset recording filter]
-    V5 --> V6[Set startTime sample counters state]
-    V6 --> V7[WebState.recording=true\nLED blue]
-    V7 --> W[Sampling loop while active]
+    O --> U[Scheduler chooses cadence]
+    S --> U
+    U --> V[Read sample raw ADC and lead off pins]
+    V --> W[Apply notch filter recording and live paths]
+    W --> X{Recording active}
+    X -- yes --> Y[Batch buffer rows and flush to CSV]
+    X -- no --> Z[Skip CSV write]
+    Y --> AA[Update WebState lastSample]
+    Z --> AA
+    AA --> AB[Broadcast websocket sample throttled]
+    AB --> AC[Serve status files and download endpoints]
+    AC --> O
 
-    U -- Stop --> X[stopRecording]
-    X --> X1[Write metadata JSON next to CSV]
-    X1 --> X2[Flush/close CSV]
-    X2 --> X3[WebState.recording=false\nLED stop blink then standby]
-    X3 --> O
+    Y --> D1[CSV output timestamp elapsed raw proc lo_pos lo_neg]
+    T1 --> D2[JSON metadata output]
+    AB --> D3[Browser live chart output]
+    AC --> D4[File list and download output]
 
-    subgraph Runtime[Continuous runtime behavior]
-      R1[Choose scheduler\nrecording cadence or always-on cadence]
-      R2[Read ECG sample\nraw ADC + LO pins]
-      R3[Apply notch filter\nrecording + live paths]
-      R4{Recording active?}
-      R5[Buffer rows and batch flush to CSV]
-      R6[Update WebState.lastSample]
-      R7[Broadcast websocket sample\n~30 Hz throttled]
-      R8[HTTP poll endpoints\nstatus/files/download]
-    end
-
-    W --> R1
-    O --> R1
-    R1 --> R2
-    R2 --> R3
-    R3 --> R4
-    R4 -- yes --> R5
-    R4 -- no --> R6
-    R5 --> R6
-    R6 --> R7
-    R7 --> R8
-    R8 --> O
-
-    subgraph DataOutputs[Persistent and live outputs]
-      D1[CSV\ntimestamp elapsed raw proc lo_pos lo_neg]
-      D2[JSON metadata\nfilename ids start end duration sample_count]
-      D3[Browser chart\nraw+processed via websocket]
-      D4[File management\nlist + download recordings]
-    end
-
-    R5 --> D1
-    X1 --> D2
-    R7 --> D3
-    R8 --> D4
-
-    subgraph BrowserUI[interface/app.js]
-      B1[Page load init chart + websocket + polling]
-      B2[Start button sends metadata to API]
-      B3[Stop button calls API]
-      B4[Periodic status and files refresh]
-    end
-
-    B1 --> B2
-    B1 --> B3
-    B1 --> B4
-    B2 --> T2
-    B3 --> T2
-    B4 --> R8
+    B1[Browser app init chart websocket polling] --> B2[Start button posts metadata]
+    B1 --> B3[Stop button posts stop]
+    B1 --> B4[Periodic status and files refresh]
+    B2 --> P2
+    B3 --> P2
+    B4 --> AC
 
 ```
 
