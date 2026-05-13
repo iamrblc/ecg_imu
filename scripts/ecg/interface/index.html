@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CanineECG - ECG Recording Interface</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>CaninECG</h1>
+            <h2>Powered by BarksLab</h2>
+            <div id="hostinfo">Connecting...</div>
+        </header>
+
+        <main>
+            <!-- Status Panel -->
+            <section class="panel status-panel">
+                <h2>System Status</h2>
+                <div class="status-grid">
+                    <div class="status-item">
+                        <label>Time Synced:</label>
+                        <span id="timeSyncedStatus" class="status-value">❌ Not Synced</span>
+                    </div>
+                    <div class="status-item">
+                        <label>Recording:</label>
+                        <span id="recordingStatus" class="status-value">⏹️ Standby</span>
+                    </div>
+                    <div class="status-item">
+                        <label>Battery (Now: last ECG)</label>
+                        <span id="lastEcgValue" class="status-value">---</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Metadata Input Section -->
+            <section class="panel metadata-panel">
+                <h2>Recording Metadata</h2>
+                <form id="metadataForm">
+                    <div class="form-group">
+                        <label for="filename">Recording name:</label>
+                        <input type="text" id="filename" name="filename" placeholder="e.g. separation_voxel" maxlength="63">
+                        <small>Filename will be automatically extended by timestamp. If no filename is given, this timestamp will be the file name.</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="dogId">Dog ID:</label>
+                        <input type="text" id="dogId" name="dog_id" placeholder="e.g. Voxel" maxlength="63">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="experimentId">Experiment ID:</label>
+                        <input type="text" id="experimentId" name="experiment_id" placeholder="e.g. separation3456" maxlength="63">
+                    </div>
+
+                    <div class="button-group">
+                        <button type="button" id="startBtn" class="btn btn-primary">Start Recording</button>
+                        <button type="button" id="stopBtn" class="btn btn-danger" disabled>Stop Recording</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Live ECG Display -->
+            <section class="panel ecg-panel">
+                <h2>Live ECG (Last 5 seconds)</h2>
+                <canvas id="ecgChart"></canvas>
+            </section>
+
+            <!-- File Management -->
+            <section class="panel files-panel">
+                <h2>Recordings</h2>
+                <div id="filesList" class="files-list">
+                    <p>Loading files...</p>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Connected as: <code>http://caninecg.local</code> or <code>http://<span id="deviceIP">---.---.---.---</span></code></p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
