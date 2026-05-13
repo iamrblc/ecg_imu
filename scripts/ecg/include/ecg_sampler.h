@@ -8,6 +8,7 @@ struct EcgSample {
     unsigned long elapsedTimeMs;
     int ecgRaw;
     int ecgProcessed;
+    int ecgProcessedLive;
     int loPos;
     int loNeg;
 };
@@ -15,8 +16,22 @@ struct EcgSample {
 class EcgSampler {
 public:
     void begin();
-    EcgSample readSample(unsigned long elapsedTimeMs, uint64_t timestampUnixMs) const;
+    EcgSample readSample(unsigned long elapsedTimeMs, uint64_t timestampUnixMs);
+
+    void resetRecordingFilter();
+    void resetLiveFilter();
 
 private:
-    int processSample(int rawValue) const;
+    struct NotchState {
+        float x1;
+        float x2;
+        float y1;
+        float y2;
+    };
+
+    int processWithNotch(int rawValue, NotchState& state);
+    static void resetNotchState(NotchState& state);
+
+    NotchState recordingFilterState_{};
+    NotchState liveFilterState_{};
 };

@@ -183,7 +183,7 @@ void WebServer::broadcastLastSample() {
     doc["timestamp_ms"] = sample.timestampUnixMs;
     doc["elapsed_ms"] = sample.elapsedTimeMs;
     doc["ecg_raw"] = sample.ecgRaw;
-    doc["ecg_proc"] = sample.ecgProcessed;
+    doc["ecg_proc"] = sample.ecgProcessedLive;
     doc["lo_pos"] = sample.loPos;
     doc["lo_neg"] = sample.loNeg;
 
@@ -202,7 +202,7 @@ String WebServer::buildStatusJson() {
     EcgSample sample = WebState::getLastSample();
     doc["last_sample"]["timestamp_ms"] = sample.timestampUnixMs;
     doc["last_sample"]["ecg_raw"] = sample.ecgRaw;
-    doc["last_sample"]["ecg_proc"] = sample.ecgProcessed;
+    doc["last_sample"]["ecg_proc"] = sample.ecgProcessedLive;
     
     // Add metadata
     RecordingMetadata md = WebState::getMetadata();

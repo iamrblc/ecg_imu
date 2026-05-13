@@ -7,7 +7,7 @@
 bool WebState::recording = false;
 RecordingMetadata WebState::metadata = {"", "", ""};
 char WebState::currentFilename[128] = "";
-EcgSample WebState::lastSample = {0, 0, 0, 0, 0, 0};
+EcgSample WebState::lastSample = {0, 0, 0, 0, 0, 0, 0};
 bool WebState::timeSynced = false;
 
 void WebState::begin() {

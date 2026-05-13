@@ -242,6 +242,9 @@ bool startRecording() {
         return false;
     }
 
+    // Make each recording self-contained: restart processing state for CSV output.
+    ecgSampler.resetRecordingFilter();
+
     startTime = millis();
     nextSampleDueMs = startTime;
     gSampleCount = 0;
