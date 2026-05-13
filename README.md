@@ -147,6 +147,15 @@ The processing part is a next step, so at the moment processing is simply duplic
 Currently there is file name, dog id and experiment id for placeholders. These can change.
 
 ### File downloads
+Currently only the recordings are listed, the corresponding jsons with metadata are not. 
+
+### SD card is not accessible through usb as remote storage
+This is intended to avoid conflicts.
+
+### Windows may not open caninecg.localhost
+It's a known issue on Win.
+- Workaround 1: Use your mobile phone.
+- Workaround 2: Turn on the board, wait till it connects to wifi, remove the card, check `wifi.json` and use the presented ip address to acecss the interface. (You may to this only rarely as the IP address is not supposed to change too frequently.)
 
 
 ## POLAR DATA STREAM
