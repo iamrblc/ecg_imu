@@ -89,7 +89,108 @@ The main workflow uses a custom built portable ECG device (AD8232) module. But i
 |VIN    |voltage input  |                           |
 
 
+```mermaid
+flowchart TD
+    %% AD8232/ESP32 ECG pipeline only (scripts/ecg)
 
+    A[Power On / Boot] --> B[setup in main.cpp]
+    B --> C[WebState begin]
+    C --> D[Try load wifi.json from SD]
+    D --> E{WiFi connected?}
+    E -- yes --> F[Save/update wifi.json with IP]
+    F --> G[Try NTP sync -> set timeSynced]
+    G --> H[Start web server + mDNS]
+    E -- no --> I[Run offline mode\nno NTP no web server]
+
+    H --> J[Init ECG sampler]
+    I --> J
+    J --> K[Init RecordControl\nbutton + LEDs]
+    K --> L[Ensure /recordings exists on SD]
+    L --> M{Latch already pressed?}
+    M -- yes --> N[startRecording]
+    M -- no --> O[Enter main loop]
+    N --> O
+
+    subgraph Triggers[Recording trigger paths]
+      T1[Button debounced\nStartRequested/StopRequested]
+      T2[Web API POST\nrecording start/stop]
+      T3[WebState.recording flag\nreconciled each loop]
+    end
+
+    O --> T1
+    O --> T2
+    O --> T3
+
+    T1 --> U{Start or Stop?}
+    T2 --> U
+    T3 --> U
+
+    U -- Start --> V[startRecording]
+    V --> V1[Init SD if needed]
+    V1 --> V2[Generate filename from metadata + timestamp]
+    V2 --> V3[Open CSV in /recordings]
+    V3 --> V4[Write CSV header]
+    V4 --> V5[Reset recording filter]
+    V5 --> V6[Set startTime sample counters state]
+    V6 --> V7[WebState.recording=true\nLED blue]
+    V7 --> W[Sampling loop while active]
+
+    U -- Stop --> X[stopRecording]
+    X --> X1[Write metadata JSON next to CSV]
+    X1 --> X2[Flush/close CSV]
+    X2 --> X3[WebState.recording=false\nLED stop blink then standby]
+    X3 --> O
+
+    subgraph Runtime[Continuous runtime behavior]
+      R1[Choose scheduler\nrecording cadence or always-on cadence]
+      R2[Read ECG sample\nraw ADC + LO pins]
+      R3[Apply notch filter\nrecording + live paths]
+      R4{Recording active?}
+      R5[Buffer rows and batch flush to CSV]
+      R6[Update WebState.lastSample]
+      R7[Broadcast websocket sample\n~30 Hz throttled]
+      R8[HTTP poll endpoints\nstatus/files/download]
+    end
+
+    W --> R1
+    O --> R1
+    R1 --> R2
+    R2 --> R3
+    R3 --> R4
+    R4 -- yes --> R5
+    R4 -- no --> R6
+    R5 --> R6
+    R6 --> R7
+    R7 --> R8
+    R8 --> O
+
+    subgraph DataOutputs[Persistent and live outputs]
+      D1[CSV\ntimestamp elapsed raw proc lo_pos lo_neg]
+      D2[JSON metadata\nfilename ids start end duration sample_count]
+      D3[Browser chart\nraw+processed via websocket]
+      D4[File management\nlist + download recordings]
+    end
+
+    R5 --> D1
+    X1 --> D2
+    R7 --> D3
+    R8 --> D4
+
+    subgraph BrowserUI[interface/app.js]
+      B1[Page load init chart + websocket + polling]
+      B2[Start button sends metadata to API]
+      B3[Stop button calls API]
+      B4[Periodic status and files refresh]
+    end
+
+    B1 --> B2
+    B1 --> B3
+    B1 --> B4
+    B2 --> T2
+    B3 --> T2
+    B4 --> R8
+
+```
 
 
 
