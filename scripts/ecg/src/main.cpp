@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <ArduinoJson.h>
 #include <sys/time.h>
 #include <time.h>
 #include <WiFi.h>
@@ -26,6 +27,10 @@ uint64_t gRecordingStartTimestamp = 0;
 namespace {
 
 constexpr time_t kMinValidUnixTime = 1704067200;
+struct WifiCredentials {
+    String ssid;
+    String password;
+};
 
 const char* wifiStatusToString(wl_status_t status) {
     switch (status) {
@@ -88,17 +93,17 @@ bool syncUnixTime() {
     return true;
 }
 
-bool connectToWifi() {
-    if (WifiConfig::kSsid[0] == '\0') {
+bool connectToWifi(const char* ssid, const char* password) {
+    if (ssid == nullptr || ssid[0] == '\0') {
         Serial.println("WiFi skipped: SSID not configured.");
         return false;
     }
 
     Serial.print("Connecting to WiFi: ");
-    Serial.println(WifiConfig::kSsid);
+    Serial.println(ssid);
 
     WiFi.mode(WIFI_STA);
-    WiFi.begin(WifiConfig::kSsid, WifiConfig::kPassword);
+    WiFi.begin(ssid, password != nullptr ? password : "");
 
     const unsigned long startedAtMs = millis();
     while (WiFi.status() != WL_CONNECTED && (millis() - startedAtMs) < WifiConfig::kConnectTimeoutMs) {
@@ -121,6 +126,79 @@ bool connectToWifi() {
 
     Serial.print("WiFi connected. IP: ");
     Serial.println(WiFi.localIP());
+    return true;
+}
+
+bool loadWifiCredentialsFromSd(WifiCredentials& credentials) {
+    if (!SD.begin(Pins::kSdCsPin)) {
+        Serial.println("WiFi credentials file unavailable: SD not ready.");
+        return false;
+    }
+
+    if (!SD.exists(WifiConfig::kCredentialsFilePath)) {
+        Serial.println("WiFi credentials file not found on SD.");
+        return false;
+    }
+
+    File file = SD.open(WifiConfig::kCredentialsFilePath, FILE_READ);
+    if (!file) {
+        Serial.println("Failed to open WiFi credentials file.");
+        return false;
+    }
+
+    JsonDocument doc;
+    const DeserializationError error = deserializeJson(doc, file);
+    file.close();
+
+    if (error) {
+        Serial.print("Invalid WiFi credentials JSON: ");
+        Serial.println(error.c_str());
+        return false;
+    }
+
+    const char* ssid = doc["ssid"] | "";
+    const char* password = doc["password"] | "";
+
+    if (ssid[0] == '\0') {
+        Serial.println("Invalid WiFi credentials JSON: ssid is empty.");
+        return false;
+    }
+
+    credentials.ssid = ssid;
+    credentials.password = password;
+    return true;
+}
+
+bool saveWifiCredentialsToSd(const WifiCredentials& credentials) {
+    if (!SD.begin(Pins::kSdCsPin)) {
+        Serial.println("Skipping WiFi credentials update: SD not ready.");
+        return false;
+    }
+
+    if (SD.exists(WifiConfig::kCredentialsFilePath) && !SD.remove(WifiConfig::kCredentialsFilePath)) {
+        Serial.println("Failed to replace WiFi credentials file.");
+        return false;
+    }
+
+    File file = SD.open(WifiConfig::kCredentialsFilePath, FILE_WRITE);
+    if (!file) {
+        Serial.println("Failed to open WiFi credentials file for writing.");
+        return false;
+    }
+
+    JsonDocument doc;
+    doc["ssid"] = credentials.ssid;
+    doc["password"] = credentials.password;
+    doc["ip"] = WiFi.localIP().toString();
+
+    if (serializeJson(doc, file) == 0) {
+        file.close();
+        Serial.println("Failed to write WiFi credentials JSON.");
+        return false;
+    }
+
+    file.close();
+    Serial.println("WiFi credentials file updated.");
     return true;
 }
 
@@ -216,9 +294,29 @@ void setup() {
     
     // Initialize WebState
     WebState::begin();
-    
-    const bool wifiConnected = connectToWifi();
+
+    WifiCredentials activeCredentials{WifiConfig::kSsid, WifiConfig::kPassword};
+    WifiCredentials sdCredentials;
+    bool wifiConnected = false;
+
+    if (loadWifiCredentialsFromSd(sdCredentials)) {
+        Serial.println("Attempting WiFi connection using /wifi.json credentials.");
+        wifiConnected = connectToWifi(sdCredentials.ssid.c_str(), sdCredentials.password.c_str());
+        if (wifiConnected) {
+            activeCredentials = sdCredentials;
+        } else {
+            Serial.println("Falling back to WiFi credentials from config.h.");
+        }
+    } else {
+        Serial.println("Using WiFi credentials from config.h.");
+    }
+
+    if (!wifiConnected) {
+        wifiConnected = connectToWifi(activeCredentials.ssid.c_str(), activeCredentials.password.c_str());
+    }
+
     if (wifiConnected) {
+        saveWifiCredentialsToSd(activeCredentials);
         syncUnixTime();
         WebState::setTimeSynced(gHasUnixTime);
         

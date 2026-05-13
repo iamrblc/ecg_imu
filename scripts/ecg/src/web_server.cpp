@@ -96,7 +96,7 @@ void WebServer::handleStatus(AsyncWebServerRequest* request) {
 
 void WebServer::handleRecordingStart(AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
     // Parse JSON body
-    DynamicJsonDocument doc(256);
+    JsonDocument doc;
     deserializeJson(doc, data, len);
 
     // Extract metadata from form
@@ -179,7 +179,7 @@ void WebServer::broadcastLastSample() {
 
     // Get last sample and format as JSON
     EcgSample sample = WebState::getLastSample();
-    DynamicJsonDocument doc(256);
+    JsonDocument doc;
     doc["timestamp_ms"] = sample.timestampUnixMs;
     doc["elapsed_ms"] = sample.elapsedTimeMs;
     doc["ecg_raw"] = sample.ecgRaw;
@@ -193,7 +193,7 @@ void WebServer::broadcastLastSample() {
 }
 
 String WebServer::buildStatusJson() {
-    DynamicJsonDocument doc(512);
+    JsonDocument doc;
     
     doc["recording"] = WebState::isRecording();
     doc["time_synced"] = WebState::isTimeSynced();
@@ -219,8 +219,8 @@ String WebServer::buildStatusJson() {
 }
 
 void WebServer::sendFilesList(AsyncWebServerRequest* request) {
-    DynamicJsonDocument doc(1024);
-    JsonArray files = doc.createNestedArray("files");
+    JsonDocument doc;
+    JsonArray files = doc["files"].to<JsonArray>();
 
     // Ensure SD is initialized for directory listing even before first recording.
     if (!SD.begin(Pins::kSdCsPin)) {
@@ -245,7 +245,7 @@ void WebServer::sendFilesList(AsyncWebServerRequest* request) {
     File file = root.openNextFile();
     while (file) {
         if (!file.isDirectory() && String(file.name()).endsWith(".csv")) {
-            JsonObject fileObj = files.createNestedObject();
+            JsonObject fileObj = files.add<JsonObject>();
             fileObj["name"] = file.name();
             fileObj["size"] = file.size();
             fileObj["time"] = file.getLastWrite();

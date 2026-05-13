@@ -112,7 +112,7 @@ bool CsvRecorder::writeMetadataJson(const char* csvFilePath, uint32_t sampleCoun
     RecordingMetadata md = WebState::getMetadata();
 
     // Build JSON document
-    DynamicJsonDocument doc(512);
+    JsonDocument doc;
     doc["filename_user_input"] = md.userInputFilename;
     doc["filename_full"] = String(csvFilePath).substring(String(csvFilePath).lastIndexOf('/') + 1);
     doc["timestamp_start_unix"] = startTimestamp;
@@ -121,7 +121,7 @@ bool CsvRecorder::writeMetadataJson(const char* csvFilePath, uint32_t sampleCoun
     doc["sample_rate_hz"] = 200;  // From config
     doc["samples_count"] = sampleCount;
 
-    JsonObject metadata = doc.createNestedObject("metadata");
+    JsonObject metadata = doc["metadata"].to<JsonObject>();
     metadata["dog_id"] = md.dogId;
     metadata["experiment_id"] = md.experimentId;
 

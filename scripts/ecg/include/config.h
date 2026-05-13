@@ -24,10 +24,9 @@ constexpr unsigned int kWriteBatchRows = 50;
 }
 
 namespace WifiConfig {
-//constexpr const char* kSsid = "OnePlus8";
-//constexpr const char* kPassword = "m4mp79k5";
 constexpr const char* kSsid = "Vodafone-5AB5";
 constexpr const char* kPassword = "aNQ27yx5ewpeaeh5";
+constexpr const char* kCredentialsFilePath = "/wifi.json";
 constexpr unsigned long kConnectTimeoutMs = 30000;
 constexpr const char* kNtpServerPrimary = "pool.ntp.org";
 constexpr const char* kNtpServerSecondary = "time.nist.gov";
